@@ -1,0 +1,16 @@
+# Target uji legal untuk MVP. Keduanya sengaja dirancang rentan — jalankan HANYA
+# di jaringan lokal/terisolasi, jangan ekspos ke internet.
+services:
+  dvwa:
+    image: vulnerables/web-dvwa:latest
+    container_name: autodast-dvwa
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  juice-shop:
+    image: bkimminich/juice-shop:latest
+    container_name: autodast-juice-shop
+    ports:
+      - "3000:3000"
+    restart: unless-stopped

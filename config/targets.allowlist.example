@@ -1,0 +1,10 @@
+# Allowlist target — satu host (atau host:port) per baris.
+# Guardrail menolak SETIAP request ke host yang tidak ada di sini.
+# Baris kosong & baris diawali '#' diabaikan.
+#
+# Salin file ini ke config/targets.allowlist lalu sesuaikan.
+
+localhost:8080
+127.0.0.1:8080
+localhost:3000
+127.0.0.1:3000
