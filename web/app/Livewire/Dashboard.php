@@ -5,8 +5,10 @@ namespace App\Livewire;
 use App\Models\Finding;
 use App\Models\Scan;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('components.layouts.app')]
 class Dashboard extends Component
 {
     public function render()

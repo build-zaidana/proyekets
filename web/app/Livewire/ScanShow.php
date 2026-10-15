@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Scan;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
@@ -12,6 +13,7 @@ use Livewire\Component;
  * Tanpa websocket. `wire:poll.2s` pada view memanggil render ulang; selama scan
  * masih berjalan, langkah & temuan baru dari worker Python muncul otomatis.
  */
+#[Layout('components.layouts.app')]
 class ScanShow extends Component
 {
     public Scan $scan;

@@ -3,9 +3,11 @@
 namespace App\Livewire;
 
 use App\Models\Scan;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('components.layouts.app')]
 class ScanIndex extends Component
 {
     use WithPagination;

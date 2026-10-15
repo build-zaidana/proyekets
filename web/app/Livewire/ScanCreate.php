@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Scan;
 use App\Models\Target;
 use Livewire\Attributes\Validate;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
@@ -12,6 +13,7 @@ use Livewire\Component;
  * input URL bebas (DESIGN_GUIDELINES §5.2). Hanya menulis job 'queued' ke DB —
  * worker Python yang menjalankan. Laravel tidak pernah menyentuh target.
  */
+#[Layout('components.layouts.app')]
 class ScanCreate extends Component
 {
     #[Validate('required|exists:targets,id')]

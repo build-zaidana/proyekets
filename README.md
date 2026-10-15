@@ -45,8 +45,8 @@ DESIGN_GUIDELINES §6.
 | Audit log, HTTP client, recon/form parser | ✅ fungsional |
 | Loop ReAct + validator (SQLi error/boolean, reflected XSS) | ✅ deterministik, jalan tanpa LLM (26 unit test) |
 | Integrasi LLM (narasi + remediasi) | ✅ opsional via env; pemilihan aksi penuh = TODO (`agent/core.py`) |
-| Worker polling + akses DB | ✅ fungsional (butuh MySQL) |
-| Dashboard Laravel | ✅ migrations, models, Livewire (index/create/show/findings), token Tailwind; chart & auth menyusul |
+| Worker polling + akses DB | ✅ fungsional (SQLite default / MySQL) |
+| Dashboard Laravel | ✅ app Laravel 13 + Livewire 4 lengkap & bootable: dashboard+chart, scans, findings, targets, audit, laporan; 4 feature test lolos. Auth opsional (TODO) |
 
 ---
 
@@ -72,8 +72,18 @@ python -m agent.worker       # polling DB untuk job scan (LLM opsional via env)
 
 ### 3. Dashboard Laravel
 
-Lihat [`web/README.md`](web/README.md) — cara `composer create-project` dan menaruh
-file scaffold di `web/`.
+```bash
+cd web
+composer install
+npm install && npm run build
+cp .env.example .env && php artisan key:generate
+touch database/database.sqlite          # default SQLite (atau set MySQL di .env)
+php artisan migrate
+php artisan db:seed --class=Database\\Seeders\\TargetSeeder
+php artisan serve                        # http://localhost:8000
+```
+
+Detail (termasuk konfigurasi MySQL) di [`web/README.md`](web/README.md).
 
 ---
 

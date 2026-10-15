@@ -39,3 +39,6 @@ audit/
 .DS_Store
 .idea/
 .vscode/
+
+# Laravel dev DB
+web/database/*.sqlite

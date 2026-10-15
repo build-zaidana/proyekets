@@ -4,9 +4,11 @@ namespace App\Livewire;
 
 use App\Models\Finding;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('components.layouts.app')]
 class FindingsIndex extends Component
 {
     use WithPagination;
