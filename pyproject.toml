@@ -1,7 +1,7 @@
 [project]
 name = "autodast-agent"
 version = "0.1.0"
-description = "Agentic AI DAST untuk analisis kerentanan aplikasi web secara otonom"
+description = "Agentic AI DAST — worker agen Python (lihat docs/DESIGN_GUIDELINES.md)"
 requires-python = ">=3.11"
 readme = "README.md"
 
@@ -10,8 +10,8 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+include = ["agent*"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["."]
 testpaths = ["tests"]

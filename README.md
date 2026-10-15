@@ -3,100 +3,90 @@
 Agentic AI **Dynamic Application Security Testing (DAST)** untuk analisis kerentanan
 aplikasi web secara otonom — proyek Tugas Akhir Informatika.
 
-Agen AI (LLM + *reasoning loop* ReAct) melakukan *reconnaissance*, memilih payload
-uji secara dinamis berdasarkan respons HTTP, memvalidasi kerentanan, dan menghasilkan
-laporan remediasi. Lihat [`docs/PRD.md`](docs/PRD.md) untuk spesifikasi lengkap.
+Agen AI (Python, LangGraph) melakukan *reconnaissance*, memilih payload uji dinamis
+berdasarkan respons HTTP, memvalidasi kerentanan, lalu menulis temuan ke database.
+Dashboard **Laravel** menampilkan langkah agen secara langsung dan menyusun laporan.
 
-> ⚠️ **HANYA UNTUK TARGET LEGAL.** Alat ini hanya boleh dijalankan terhadap aplikasi
-> yang Anda miliki atau yang secara eksplisit mengizinkan pengujian (mis. DVWA /
-> OWASP Juice Shop lokal). Semua request dibatasi oleh **allowlist** yang di-*enforce*
-> di level kode. Penggunaan terhadap sistem pihak ketiga tanpa izin adalah ilegal.
+Dokumen: [`docs/PRD.md`](docs/PRD.md) (apa & kenapa) · [`docs/DESIGN_GUIDELINES.md`](docs/DESIGN_GUIDELINES.md) (bagaimana).
 
----
-
-## Arsitektur singkat
-
-```
-Orchestrator (LLM + ReAct)
-   │  function calling
-   ├─ recon         : extract_endpoints, analyze_form   (crawling pasif)
-   ├─ scanner tool  : send_http_request                  (satu-satunya pintu jaringan)
-   └─ reporter      : temuan → laporan Markdown + remediasi
-         │
-         ├─ Guardrails : allowlist ⇒ rate-limit ⇒ filter payload destruktif ⇒ audit log
-         └─ Target legal (Docker: DVWA / Juice Shop)
-```
-
-Prinsip: **LLM tidak pernah memegang jaringan langsung.** Semua I/O keluar melewati
-`send_http_request` yang di-*guardrail*.
+> ⚠️ **HANYA UNTUK TARGET LEGAL.** Jalankan hanya terhadap aplikasi yang Anda miliki
+> atau yang mengizinkan pengujian (DVWA / OWASP Juice Shop lokal). Semua request
+> dibatasi **allowlist** yang ditegakkan di level kode Python. Pengujian sistem pihak
+> ketiga tanpa izin adalah ilegal.
 
 ---
 
-## Setup
+## Arsitektur (dua lapis, DB sebagai kontrak)
 
-### 1. Environment Python
-
-```bash
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+```
+web/   Laravel + Blade + Livewire + Tailwind   ── auth, kelola scan, laporan
+          │  tulis scans(status='queued')
+          ▼
+       MySQL   ── scans · findings · agent_steps · audit_log · targets
+          ▲
+          │  worker polling ~2 dtk → jalankan → tulis balik
+agent/ Python (LangGraph + tools ber-guardrail) ── satu-satunya yang menyentuh target
+          ▼
+       Target Docker (DVWA / Juice Shop)
 ```
 
-### 2. Konfigurasi
+Laravel tidak pernah mengirim request ke target — ia hanya menyentuh DB. Semua trafik
+ke target keluar dari proses Python, lewat `send_http_request` yang ber-guardrail
+(allowlist → rate limit → filter payload destruktif → audit log → kirim). Lihat
+DESIGN_GUIDELINES §6.
+
+---
+
+## Status scaffold
+
+| Bagian | Status |
+| --- | --- |
+| Guardrail (allowlist, rate limit, filter payload) | ✅ fungsional + unit test |
+| Audit log, HTTP client, recon/form parser | ✅ fungsional |
+| Worker polling + akses DB | ✅ skeleton fungsional (butuh MySQL) |
+| Loop ReAct / integrasi LLM | ⏳ skeleton ber-TODO (`agent/core.py`) |
+| Dashboard Laravel | ⏳ migrations + models + 1 komponen Livewire; UI penuh menyusul |
+
+---
+
+## Menjalankan
+
+### 1. Target legal (Docker)
 
 ```bash
-cp .env.example .env                                  # isi API key LLM
+docker compose up -d        # DVWA :8080 · Juice Shop :3000
 cp config/targets.allowlist.example config/targets.allowlist
 ```
 
-Edit `config/targets.allowlist` — satu host per baris. Host yang **tidak** terdaftar
-akan ditolak oleh guardrail sebelum request terkirim.
-
-### 3. Jalankan target legal (Docker)
+### 2. Agen Python
 
 ```bash
-docker compose up -d
+python -m venv .venv && source .venv/bin/activate
+pip install -r agent/requirements.txt
+cp .env.example .env         # isi AGENT_DB_DSN agar sama dengan DB Laravel
+pytest                       # 15 test guardrail & http client
+python -m agent.worker       # polling DB untuk job scan
 ```
 
-| Target | URL |
-| --- | --- |
-| DVWA | http://localhost:8080 |
-| OWASP Juice Shop | http://localhost:3000 |
+### 3. Dashboard Laravel
 
-### 4. Jalankan agen
-
-```bash
-python -m autodast --target http://localhost:8080 --out reports/
-# cek guardrail tanpa kirim request nyata:
-python -m autodast --target http://localhost:8080 --dry-run
-```
+Lihat [`web/README.md`](web/README.md) — cara `composer create-project` dan menaruh
+file scaffold di `web/`.
 
 ---
 
-## Struktur proyek
+## Struktur
 
 ```
-src/autodast/
-  config.py          # pemuatan .env + allowlist
-  guardrails.py      # allowlist, rate limiter, filter payload destruktif
-  audit.py           # audit log JSONL semua request
-  tools/
-    http_client.py   # send_http_request (ber-guardrail) — satu pintu jaringan
-    recon.py         # extract_endpoints (crawl dangkal)
-    forms.py         # analyze_form
-  agent.py           # ReAct reasoning loop (skeleton, provider-agnostik)
-  reporter.py        # generator laporan Markdown
-tests/               # unit test guardrail & http client
-docs/PRD.md          # Product Requirements Document
+agent/      Python: config guardrails audit db reporter tools/ core.py worker.py
+web/        Laravel: app/Models app/Livewire database/migrations resources/views
+config/     targets.allowlist (sumber kebenaran guardrail)
+tests/      unit test guardrail & http client
+docs/       PRD.md · DESIGN_GUIDELINES.md
+docker-compose.yml
 ```
 
-## Status
+## Etika
 
-Scaffold MVP. Bagian keamanan-kritis (guardrail, audit log, recon/form parsing)
-sudah fungsional; loop agen LLM berupa skeleton yang siap diisi — lihat `TODO` di
-`src/autodast/agent.py`.
-
-## Lisensi & Etika
-
-Lihat [`docs/PRD.md`](docs/PRD.md) §3 (Batasan Etis, Legal & Keamanan). Pengujian hanya
-pada sistem milik sendiri / yang diizinkan.
+Lihat PRD §3 dan DESIGN_GUIDELINES §5. Pengujian hanya pada sistem milik sendiri /
+yang diizinkan.

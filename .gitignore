@@ -1,4 +1,4 @@
-# Python
+# === Python (agent/) ===
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -8,25 +8,34 @@ dist/
 .venv/
 venv/
 env/
-
-# Secrets & local config
-.env
-config/targets.allowlist
-
-# Runtime output
-reports/
-logs/
-audit/
-*.jsonl
-
-# Tooling
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
 
-# OS / editor
+# === Laravel (web/) ===
+web/vendor/
+web/node_modules/
+web/public/build/
+web/public/hot
+web/storage/*.key
+web/.env
+web/.env.backup
+web/.phpunit.result.cache
+web/bootstrap/cache/*.php
+
+# === Secrets & local config ===
+.env
+config/targets.allowlist
+
+# === Runtime output ===
+reports/
+logs/
+audit/
+*.jsonl
+
+# === OS / editor ===
 .DS_Store
 .idea/
 .vscode/

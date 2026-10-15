@@ -6,11 +6,11 @@ melanggar, itu alasan sah untuk revisi.
 
 | | |
 | --- | --- |
-| **Versi** | 0.1 |
-| **Tanggal** | 2026-10-14 |
-| **Stack dashboard** | React + TypeScript + Vite + Tailwind CSS |
-| **Stack API** | FastAPI (membungkus core agen Python) |
-| **Fallback FE** | FastAPI + Jinja2 + HTMX (lihat §6.3) |
+| **Versi** | 0.2 |
+| **Tanggal** | 2026-10-15 |
+| **Stack web** | Laravel 11 + Blade + Livewire + Tailwind CSS (Vite) |
+| **Stack agen** | Python 3.11+ (LangGraph), worker polling |
+| **Integrasi** | MySQL sebagai kontrak (lihat §6) — tanpa Redis/broker/websocket |
 
 Dokumen terkait: [`PRD.md`](PRD.md) (apa & kenapa). Dokumen ini: **bagaimana**.
 
@@ -207,8 +207,9 @@ Loop ReAct ditampilkan sebagai timeline streaming, satu entri per langkah:
 
 - **Thought** ink sekunder, italic. **Action** monospace dengan nama tool + argumen
   ringkas. **Observation** monospace dengan status code berwarna status + ringkasan.
-- Entri masuk via SSE (`text/event-stream`) dari `/api/scans/{id}/events`, append di
-  bawah, auto-scroll kecuali pengguna menggulir ke atas.
+- Komponen **Livewire polling** tiap ~2 dtk membaca tabel `agent_steps` (§6.3) dan
+  menambah entri baru di bawah, auto-scroll kecuali pengguna menggulir ke atas. Tanpa
+  websocket/SSE — worker Python menulis step ke DB, dashboard membacanya.
 - Setiap Observation yang jadi dasar temuan punya link ke evidence block.
 - Guardrail yang menolak request muncul sebagai entri `Blocked` warna
   `--run-blocked` dengan alasan — supaya pengguna lihat guardrail bekerja.
@@ -319,33 +320,73 @@ Backend tetap menolak di level tool meski UI dilewati (§5.3).
 
 | Lapis | Tanggung jawab |
 | --- | --- |
-| UI | Menampilkan status guardrail, membatasi pilihan target ke allowlist |
-| API (FastAPI) | Validasi request, otorisasi |
+| Laravel (web) | Menampilkan status guardrail, membatasi pilihan target ke allowlist, hanya menulis job `queued` ke DB |
+| Worker Python | Memvalidasi ulang target terhadap allowlist sebelum menjalankan scan |
 | **Tool `send_http_request`** | **Penegak sebenarnya:** allowlist → rate limit → filter payload destruktif → audit log → kirim |
 
-UI dan API boleh gagal/dilewati; tool tidak boleh. Penegakan ada di titik paling dekat
-dengan jaringan.
+Laravel dan worker boleh gagal/dilewati; tool tidak boleh. Penegakan ada di titik
+paling dekat dengan jaringan, di dalam proses Python. Laravel tidak pernah mengirim
+request ke target — ia hanya menyentuh DB.
 
 ---
 
 ## 6. Arsitektur & Konvensi Kode
 
-### 6.1 Batas modul
+### 6.1 Dua lapis, satu kontrak
+
+Laravel adalah wajib dari tugas; agen wajib Python. Keduanya dihubungkan oleh **MySQL
+sebagai kontrak** — bukan HTTP langsung, bukan broker. Pilihan paling sedikit bagian
+bergerak, sengaja, karena developer masih belajar kedua stack.
 
 ```
-core (Python, murni, tanpa web)      → src/autodast/
-  guardrails.py   audit.py   config.py
-  tools/          agent.py   reporter.py
-api  (FastAPI, tipis)                → src/autodast_api/
-  routes/   schemas/   sse.py
-web  (React + TS + Vite + Tailwind)  → web/
-  src/components/  src/pages/  src/lib/api.ts  src/tokens.css
+web/   Laravel 11 + Blade + Livewire + Tailwind   ← auth, kelola scan/target, laporan
+         │  tulis scans(status='queued')
+         ▼
+       MySQL   ← kontrak: scans · findings · agent_steps · audit_log · targets
+         ▲
+         │  worker polling ~2 dtk: klaim scan 'queued' → jalankan → tulis balik
+agent/ Python (LangGraph + tools ber-guardrail)    ← satu-satunya yang menyentuh target
+         ▼
+       Target Docker (DVWA / Juice Shop)
 ```
 
-Aturan ketergantungan: `web → api → core`. Core tidak pernah mengimpor api atau web.
-Api tipis: ia memanggil core dan menyusun response, tanpa logika keamanan sendiri.
+**Aturan ketergantungan yang mengikat:**
 
-### 6.2 Kontrak tool (pola wajib)
+- **Laravel tidak pernah mengirim request ke target.** Ia hanya membaca/menulis DB.
+  Semua trafik ke target keluar dari proses Python.
+- **Agen Python tidak mengimpor atau memanggil Laravel.** Ia membaca job dari DB dan
+  menulis hasil ke DB.
+- Satu-satunya hal yang mereka bagi adalah skema tabel di §6.3.
+
+### 6.2 Alur satu scan
+
+1. Pengguna pilih target (dari allowlist) di Laravel → `INSERT scans(status='queued')`.
+2. Worker Python polling → klaim satu scan `queued` secara atomik (update bersyarat
+   `status='queued' → 'running'`), tolak jalan kalau targetnya tidak ada di allowlist.
+3. Tiap langkah ReAct → `INSERT agent_steps`. Tiap request → `INSERT audit_log`. Tiap
+   temuan tervalidasi → `INSERT findings`.
+4. Selesai → `UPDATE scans SET status='done'` (atau `'error'`/`'blocked'`).
+5. Livewire polling membaca `agent_steps`/`findings` → UI update tanpa websocket.
+
+Klaim atomik mencegah dua worker mengambil scan yang sama. Status scan: `queued →
+running → done | error | blocked`.
+
+### 6.3 Skema tabel (kontrak antar-lapis)
+
+Didefinisikan sebagai migration Laravel; worker Python membacanya apa adanya.
+
+| Tabel | Kolom inti |
+| --- | --- |
+| `targets` | id, name, base_url, is_active — cermin allowlist, read-only dari UI |
+| `scans` | id, target_id, status, started_at, finished_at, totals (json per severity) |
+| `agent_steps` | id, scan_id, seq, phase (`thought`/`action`/`observation`/`blocked`), content, created_at |
+| `findings` | id, scan_id, severity, confidence, vuln_type, cwe, location, evidence (json), remediation |
+| `audit_log` | id, scan_id, ts, method, url, verdict (`sent`/`blocked`), reason |
+
+`targets` adalah cermin `config/targets.allowlist`; allowlist file tetap sumber
+kebenaran untuk guardrail (§5), tabel hanya untuk pilihan di UI.
+
+### 6.4 Kontrak tool (pola wajib — sisi Python)
 
 Setiap tool yang dipanggil agen mengikuti pola sama:
 
@@ -354,45 +395,49 @@ def send_http_request(method: str, url: str, *, data: dict | None = None) -> Htt
     """Satu-satunya pintu keluar jaringan. Ber-guardrail.
 
     Guardrail dijalankan BERURUTAN dan gagal-tertutup (fail closed):
-    allowlist → rate limit → filter payload → audit log → kirim.
+    allowlist -> rate limit -> filter payload -> audit log -> kirim.
     """
 ```
 
-- Tool mengembalikan objek hasil terstruktur (dataclass/Pydantic), bukan string mentah,
-  supaya agen dan UI membaca field yang sama.
+- Tool mengembalikan objek hasil terstruktur (dataclass), bukan string mentah.
 - Tool **gagal-tertutup**: input ragu atau cek gagal → tolak, jangan kirim.
-- Tidak ada jalur jaringan lain di seluruh core. `requests` hanya diimpor di
-  `tools/http_client.py`.
+- `requests` hanya diimpor di `agent/tools/http_client.py`. Tidak ada jalur jaringan
+  lain di seluruh paket `agent/`.
 
-### 6.3 Fallback frontend
+### 6.5 Struktur direktori
 
-Kalau effort FE perlu dipangkas, ganti `web/` dengan FastAPI + Jinja2 + HTMX. Token
-(§2) dipakai sebagai CSS variables di satu stylesheet; komponen jadi partial HTML.
-Kontrak API dan core tidak berubah. Keputusan ini diambil sadar, dicatat di PRD.
+```
+web/        Laravel (app/Models, app/Livewire, database/migrations, resources/views)
+agent/      Python: config.py guardrails.py audit.py db.py reporter.py
+            tools/http_client.py recon.py forms.py   core.py (ReAct)   worker.py
+config/     targets.allowlist   (dibaca agen; sumber kebenaran guardrail)
+docker-compose.yml   target uji (DVWA / Juice Shop)
+tests/      unit test guardrail & http client (Python)
+```
 
-### 6.4 Penamaan
+### 6.6 Penamaan
 
+- PHP/Laravel: `PascalCase` kelas/model/komponen Livewire, `camelCase` method,
+  migration `snake_case`, tabel jamak `snake_case`.
 - Python: `snake_case` fungsi/variabel, `PascalCase` kelas, modul `snake_case`.
-- TS/React: `PascalCase` komponen & file komponen, `camelCase` fungsi/variabel,
-  `use`-prefix untuk hook.
 - Nama menyebut maksud, bukan tipe: `allowed_hosts`, bukan `host_list`.
 
-### 6.5 Error handling & logging
+### 6.7 Error handling & logging
 
-- Core melempar exception bertipe (`GuardrailError`, `TargetNotAllowed`), api
-  menerjemahkannya ke HTTP status + body JSON yang stabil.
-- Logging pakai `logging` stdlib, bukan `print`. Audit log request terpisah di
-  `audit.py` (JSONL), bukan dicampur log aplikasi.
+- Python melempar exception bertipe (`GuardrailError`, `TargetNotAllowed`); worker
+  menangkapnya, tulis `scans.status='error'`/`'blocked'` + alasan ke DB, lanjut hidup.
+- Logging pakai `logging` stdlib, bukan `print`. Audit request ditulis ke tabel
+  `audit_log` (dan cermin JSONL lokal), terpisah dari log aplikasi.
 - Jangan telan exception diam-diam. Jangan log secret.
 
-### 6.6 Testing
+### 6.8 Testing
 
 - Guardrail wajib ada unit test: host di luar allowlist ditolak, rate limit menahan,
-  payload destruktif difilter. Ini bagian keamanan-kritis — tanpa test, tidak di-merge.
-- Tool HTTP diuji dengan `responses`/mock, tanpa jaringan nyata.
-- Target CI: guardrail & http client 100% baris; selebihnya best-effort.
+  payload destruktif difilter. Keamanan-kritis — tanpa test, tidak di-merge.
+- Tool HTTP diuji dengan mock, tanpa jaringan nyata.
+- Laravel: feature test untuk pembuatan scan menulis baris `queued` yang benar.
 
-### 6.7 Commit & PR
+### 6.9 Commit & PR
 
 - Commit kecil dan deskriptif, present tense: `feat: add allowlist guardrail`.
 - Prefix: `feat` · `fix` · `docs` · `test` · `refactor` · `chore`.
@@ -404,7 +449,8 @@ Kontrak API dan core tidak berubah. Keputusan ini diambil sadar, dicatat di PRD.
 
 - Severity atau status dibedakan hanya dengan warna.
 - Input URL bebas di form scan.
-- `requests` atau socket di luar `tools/http_client.py`.
+- `requests` atau socket di luar `agent/tools/http_client.py`.
+- Laravel mengirim request ke target (ia hanya menyentuh DB).
 - Guardrail yang hanya ada di prompt atau UI.
 - Secret di laporan, log, kode, atau commit.
 - Dark mode hasil filter CSS otomatis alih-alih token sendiri.
