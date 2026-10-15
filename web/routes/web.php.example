@@ -1,14 +1,20 @@
 <?php
 
-// Tambahkan ke routes/web.php Laravel. Contoh rute dashboard.
+// Tambahkan ke routes/web.php Laravel (lihat web/README.md).
 // `.example` agar tidak menimpa routes/web.php bawaan saat scaffold di-drop.
 
+use App\Livewire\FindingsIndex;
+use App\Livewire\ScanCreate;
+use App\Livewire\ScanIndex;
 use App\Livewire\ScanShow;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'dashboard')->name('dashboard');
 
-// Detail scan (feed ReAct + temuan, komponen Livewire).
+Route::get('/scans', ScanIndex::class)->name('scans.index');
+Route::get('/scans/create', ScanCreate::class)->name('scans.create');
 Route::get('/scans/{scan}', ScanShow::class)->name('scans.show');
 
-// TODO: rute index scans, findings, targets, audit, dan laporan (DESIGN_GUIDELINES §3.2).
+Route::get('/findings', FindingsIndex::class)->name('findings.index');
+
+// TODO: halaman targets, audit, dan laporan (DESIGN_GUIDELINES §3.2).

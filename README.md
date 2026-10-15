@@ -43,9 +43,10 @@ DESIGN_GUIDELINES §6.
 | --- | --- |
 | Guardrail (allowlist, rate limit, filter payload) | ✅ fungsional + unit test |
 | Audit log, HTTP client, recon/form parser | ✅ fungsional |
-| Worker polling + akses DB | ✅ skeleton fungsional (butuh MySQL) |
-| Loop ReAct / integrasi LLM | ⏳ skeleton ber-TODO (`agent/core.py`) |
-| Dashboard Laravel | ⏳ migrations + models + 1 komponen Livewire; UI penuh menyusul |
+| Loop ReAct + validator (SQLi error/boolean, reflected XSS) | ✅ deterministik, jalan tanpa LLM (26 unit test) |
+| Integrasi LLM (narasi + remediasi) | ✅ opsional via env; pemilihan aksi penuh = TODO (`agent/core.py`) |
+| Worker polling + akses DB | ✅ fungsional (butuh MySQL) |
+| Dashboard Laravel | ✅ migrations, models, Livewire (index/create/show/findings), token Tailwind; chart & auth menyusul |
 
 ---
 
@@ -56,6 +57,7 @@ DESIGN_GUIDELINES §6.
 ```bash
 docker compose up -d        # DVWA :8080 · Juice Shop :3000
 cp config/targets.allowlist.example config/targets.allowlist
+cp config/payloads.example.yml config/payloads.yml
 ```
 
 ### 2. Agen Python
@@ -64,8 +66,8 @@ cp config/targets.allowlist.example config/targets.allowlist
 python -m venv .venv && source .venv/bin/activate
 pip install -r agent/requirements.txt
 cp .env.example .env         # isi AGENT_DB_DSN agar sama dengan DB Laravel
-pytest                       # 15 test guardrail & http client
-python -m agent.worker       # polling DB untuk job scan
+pytest                       # 26 test: guardrail, http client, validator, loop
+python -m agent.worker       # polling DB untuk job scan (LLM opsional via env)
 ```
 
 ### 3. Dashboard Laravel
@@ -78,10 +80,11 @@ file scaffold di `web/`.
 ## Struktur
 
 ```
-agent/      Python: config guardrails audit db reporter tools/ core.py worker.py
-web/        Laravel: app/Models app/Livewire database/migrations resources/views
-config/     targets.allowlist (sumber kebenaran guardrail)
-tests/      unit test guardrail & http client
+agent/      Python: config guardrails audit db reporter tools/
+            core.py (ReAct) validator.py payloads.py llm.py worker.py
+web/        Laravel: app/Models app/Livewire database/migrations resources/{css,views}
+config/     targets.allowlist · payloads.yml (sumber kebenaran guardrail & payload)
+tests/      26 unit test: guardrail, http client, validator, loop core
 docs/       PRD.md · DESIGN_GUIDELINES.md
 docker-compose.yml
 ```

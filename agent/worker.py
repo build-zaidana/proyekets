@@ -11,18 +11,22 @@ from __future__ import annotations
 import logging
 import time
 
+from agent import llm as llm_mod
 from agent.audit import AuditLog
 from agent.config import Settings
 from agent.core import run_scan
 from agent.db import Database
 from agent.guardrails import RateLimiter, TargetNotAllowed, check_allowlist
+from agent.payloads import PayloadCatalog
 from agent.tools.http_client import HttpClient
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 logger = logging.getLogger("autodast.worker")
 
 
-def process_one(settings: Settings, db: Database, scan: dict) -> None:
+def process_one(
+    settings: Settings, db: Database, scan: dict, catalog: PayloadCatalog, llm
+) -> None:
     scan_id, target = scan["id"], scan["base_url"]
 
     try:
@@ -46,15 +50,12 @@ def process_one(settings: Settings, db: Database, scan: dict) -> None:
 
     try:
         result = run_scan(
-            client, target, max_steps=settings.max_agent_steps, on_step=on_step,
-            llm=None,  # TODO: suntik LLMAdapter saat integrasi provider
+            client, target, catalog=catalog,
+            max_steps=settings.max_agent_steps, on_step=on_step, llm=llm,
         )
         for f in result.findings:
             db.insert_finding(scan_id, f.__dict__)
         db.set_scan_status(scan_id, "done")
-    except NotImplementedError as exc:
-        # Loop ReAct belum diisi — tandai jelas, jangan pura-pura selesai.
-        db.set_scan_status(scan_id, "error", f"belum diimplementasikan: {exc}")
     except Exception as exc:  # noqa: BLE001 - worker harus tetap hidup
         logger.exception("Scan %s gagal", scan_id)
         db.set_scan_status(scan_id, "error", str(exc))
@@ -65,14 +66,19 @@ def main() -> None:
     if not settings.allowed_hosts:
         logger.warning("Allowlist kosong — semua target akan ditolak (fail closed).")
     db = Database(settings.db_dsn)
-    logger.info("Worker siap. Polling tiap %ss.", settings.poll_interval_seconds)
+    catalog = PayloadCatalog.load()
+    llm = llm_mod.build_from_env(settings)
+    logger.info(
+        "Worker siap. Polling tiap %ss. LLM: %s.",
+        settings.poll_interval_seconds, "aktif" if llm else "nonaktif (mode deterministik)",
+    )
     while True:
         scan = db.claim_queued_scan()
         if scan is None:
             time.sleep(settings.poll_interval_seconds)
             continue
         logger.info("Mengerjakan scan %s -> %s", scan["id"], scan["base_url"])
-        process_one(settings, db, scan)
+        process_one(settings, db, scan, catalog, llm)
 
 
 if __name__ == "__main__":

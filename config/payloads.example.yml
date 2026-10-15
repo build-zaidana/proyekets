@@ -1,0 +1,33 @@
+# Katalog payload uji — DATA, bukan kode (DESIGN_GUIDELINES §6.4 & PRD §7).
+# Salin ke config/payloads.yml. Hanya vektor uji kanonik untuk lab LOKAL legal
+# (DVWA / Juice Shop). Semua payload bersifat PEMBUKTIAN non-destruktif — tidak
+# mengubah/menghapus data. Payload merusak otomatis ditolak guardrail (§5).
+#
+# Tiap kelas punya 'probe' (vektor uji) dan 'control' (pembanding jinak) untuk
+# validasi diferensial: temuan hanya dicatat bila probe & control berbeda perilaku,
+# atau ada signature error — bukan sekadar status code.
+
+sql_injection:
+  cwe: "CWE-89"
+  # Pasangan boolean untuk uji diferensial (true vs false).
+  boolean_true: "' OR '1'='1"
+  boolean_false: "' AND '1'='2"
+  # Pemicu error untuk uji error-based.
+  error_probe: "'"
+  control: "normaltext"
+
+xss_reflected:
+  cwe: "CWE-79"
+  # Marker unik agar refleksi mudah dikenali di body respons.
+  probe: "<script>__dastmark__</script>"
+  marker: "__dastmark__"
+  control: "dastcontrol"
+
+# Signature error SQL yang menandakan input bocor ke query (uji error-based).
+sql_error_signatures:
+  - "you have an error in your sql syntax"
+  - "warning: mysql"
+  - "unclosed quotation mark"
+  - "pg::syntaxerror"
+  - "sqlite3::"
+  - "ora-00933"

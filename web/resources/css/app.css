@@ -1,0 +1,177 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* ============================================================================
+   Design tokens — sumber kebenaran di docs/DESIGN_GUIDELINES.md §2.
+   Diubah lewat PR yang memperbarui dokumen itu lebih dulu.
+   ========================================================================== */
+
+:root {
+    /* Chrome — netral + aksen (§2.1) */
+    --bg: #fcfcfb;
+    --surface: #ffffff;
+    --surface-2: #f4f4f2;
+    --border: #e4e4e1;
+    --ink: #1c1c1a;
+    --ink-2: #55554f;
+    --ink-muted: #8a8a82;
+    --accent: #5b57d6;
+    --accent-ink: #ffffff;
+
+    /* Severity (§2.2) — light */
+    --sev-critical: #c0271e;
+    --sev-high: #e8590c;
+    --sev-medium: #a6820a;
+    --sev-low: #1f5aa6;
+    --sev-info: #6b7685;
+
+    /* Status scan (§2.3) */
+    --run-active: #5b57d6;
+    --run-ok: #2f7d4f;
+    --run-blocked: #a6820a;
+    --run-error: #c0271e;
+
+    /* Spacing, radius, elevation (§2.5) */
+    --radius: 6px;
+    --radius-card: 10px;
+    --shadow-pop: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+    --font-ui: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Dark mode: langkah sendiri, bukan filter otomatis (§2.1, §2.2, §3.8).
+   Aktif via data-theme="dark" ATAU preferensi sistem (kecuali dipaksa light). */
+:root[data-theme='dark'],
+:root:not([data-theme='light']) {
+    @media (prefers-color-scheme: dark) {
+        --bg: #1a1a19;
+        --surface: #232322;
+        --surface-2: #2c2c2a;
+        --border: #383835;
+        --ink: #f2f2ef;
+        --ink-2: #b6b6af;
+        --ink-muted: #83837b;
+        --accent: #8683e8;
+        --accent-ink: #17171f;
+
+        --sev-critical: #e5484d;
+        --sev-high: #ff802b;
+        --sev-medium: #d9a400;
+        --sev-low: #5a9cf0;
+        --sev-info: #9aa4b2;
+    }
+}
+
+:root[data-theme='dark'] {
+    --bg: #1a1a19;
+    --surface: #232322;
+    --surface-2: #2c2c2a;
+    --border: #383835;
+    --ink: #f2f2ef;
+    --ink-2: #b6b6af;
+    --ink-muted: #83837b;
+    --accent: #8683e8;
+    --accent-ink: #17171f;
+
+    --sev-critical: #e5484d;
+    --sev-high: #ff802b;
+    --sev-medium: #d9a400;
+    --sev-low: #5a9cf0;
+    --sev-info: #9aa4b2;
+}
+
+/* ============================================================================
+   Base
+   ========================================================================== */
+
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    margin: 0;
+}
+
+code,
+pre,
+.mono {
+    font-family: var(--font-mono);
+}
+
+:where(a, button, input, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ============================================================================
+   Komponen (§3.3)
+   ========================================================================== */
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 24px;
+}
+
+.muted {
+    color: var(--ink-muted);
+}
+
+/* Severity badge — pill tinted, ikon + teks + warna (§2.2). */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+}
+.badge--sev-critical { color: var(--sev-critical); background: color-mix(in srgb, var(--sev-critical) 12%, transparent); }
+.badge--sev-high     { color: var(--sev-high);     background: color-mix(in srgb, var(--sev-high) 12%, transparent); }
+.badge--sev-medium   { color: var(--sev-medium);   background: color-mix(in srgb, var(--sev-medium) 12%, transparent); }
+.badge--sev-low      { color: var(--sev-low);      background: color-mix(in srgb, var(--sev-low) 12%, transparent); }
+.badge--sev-info     { color: var(--sev-info);     background: color-mix(in srgb, var(--sev-info) 12%, transparent); }
+
+.badge--run-queued,
+.badge--run-running { color: var(--run-active); background: color-mix(in srgb, var(--run-active) 12%, transparent); }
+.badge--run-done    { color: var(--run-ok);     background: color-mix(in srgb, var(--run-ok) 12%, transparent); }
+.badge--run-blocked { color: var(--run-blocked);background: color-mix(in srgb, var(--run-blocked) 12%, transparent); }
+.badge--run-error   { color: var(--run-error);  background: color-mix(in srgb, var(--run-error) 12%, transparent); }
+
+/* Agent activity feed (§3.4) */
+.feed { list-style: none; padding: 0; margin: 0; }
+.feed__step { display: grid; grid-template-columns: 90px 1fr; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.feed__phase { font-size: 12px; color: var(--ink-2); text-transform: uppercase; }
+.feed__step--thought .feed__content { font-style: italic; color: var(--ink-2); }
+.feed__step--blocked .feed__phase { color: var(--run-blocked); }
+.feed__content { font-family: var(--font-mono); font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+
+/* App shell (§3.1) */
+.shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.shell__topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.shell__side { border-right: 1px solid var(--border); padding: 16px; background: var(--surface); }
+.shell__side a { display: block; padding: 8px 12px; border-radius: var(--radius); color: var(--ink-2); text-decoration: none; }
+.shell__side a[aria-current='page'] { background: var(--surface-2); color: var(--ink); }
+.shell__main { padding: 24px; max-width: 1200px; }
+
+.scan-detail__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+@media (max-width: 1024px) {
+    .shell { grid-template-columns: 1fr; }
+    .shell__side { display: none; }
+    .scan-detail__grid { grid-template-columns: 1fr; }
+}
+
+/* Tabel */
+table.data { width: 100%; border-collapse: collapse; }
+table.data th { background: var(--surface-2); text-align: left; padding: 12px 16px; font-size: 14px; }
+table.data td { padding: 12px 16px; border-top: 1px solid var(--border); font-size: 14px; }
+table.data tbody tr:nth-child(even) { background: var(--surface-2); }
+
+/* Tombol */
+.btn { height: 40px; padding: 0 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--ink); cursor: pointer; }
+.btn--primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn--danger { background: transparent; color: var(--sev-critical); border-color: var(--sev-critical); }
