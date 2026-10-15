@@ -10,9 +10,15 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger("autodast.db")
+
+
+def _now() -> str:
+    """Timestamp UTC sebagai string — portabel MySQL & SQLite (hindari NOW())."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 class Database:
@@ -44,10 +50,10 @@ class Database:
                 return None
             updated = conn.execute(
                 text(
-                    "UPDATE scans SET status='running', started_at=NOW() "
+                    "UPDATE scans SET status='running', started_at=:ts "
                     "WHERE id=:id AND status='queued'"
                 ),
-                {"id": row["id"]},
+                {"id": row["id"], "ts": _now()},
             )
             if updated.rowcount != 1:
                 return None  # worker lain mendahului
@@ -60,9 +66,10 @@ class Database:
             conn.execute(
                 text(
                     "INSERT INTO agent_steps (scan_id, seq, phase, content, created_at) "
-                    "VALUES (:scan_id, :seq, :phase, :content, NOW())"
+                    "VALUES (:scan_id, :seq, :phase, :content, :ts)"
                 ),
-                {"scan_id": scan_id, "seq": seq, "phase": phase, "content": content},
+                {"scan_id": scan_id, "seq": seq, "phase": phase,
+                 "content": content, "ts": _now()},
             )
 
     def insert_finding(self, scan_id: int, finding: dict[str, Any]) -> None:
@@ -75,10 +82,11 @@ class Database:
                     "(scan_id, severity, confidence, vuln_type, cwe, location, "
                     " evidence, remediation, created_at) VALUES "
                     "(:scan_id, :severity, :confidence, :vuln_type, :cwe, :location, "
-                    " :evidence, :remediation, NOW())"
+                    " :evidence, :remediation, :ts)"
                 ),
                 {
                     "scan_id": scan_id,
+                    "ts": _now(),
                     "evidence": json.dumps(finding.get("evidence", {})),
                     **{
                         k: finding.get(k, "")
@@ -109,9 +117,9 @@ class Database:
         with self._engine.begin() as conn:
             conn.execute(
                 text(
-                    "UPDATE scans SET status=:status, finished_at=NOW() WHERE id=:id"
+                    "UPDATE scans SET status=:status, finished_at=:ts WHERE id=:id"
                 ),
-                {"status": status, "id": scan_id},
+                {"status": status, "id": scan_id, "ts": _now()},
             )
             if reason:
                 logger.info("Scan %s -> %s (%s)", scan_id, status, reason)

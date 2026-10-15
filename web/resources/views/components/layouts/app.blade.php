@@ -20,6 +20,8 @@
             <a href="{{ route('dashboard') }}" @if (request()->routeIs('dashboard')) aria-current="page" @endif>Dashboard</a>
             <a href="{{ route('scans.index') }}" @if (request()->routeIs('scans.*')) aria-current="page" @endif>Scans</a>
             <a href="{{ route('findings.index') }}" @if (request()->routeIs('findings.*')) aria-current="page" @endif>Findings</a>
+            <a href="{{ route('targets.index') }}" @if (request()->routeIs('targets.*')) aria-current="page" @endif>Targets</a>
+            <a href="{{ route('audit.index') }}" @if (request()->routeIs('audit.*')) aria-current="page" @endif>Audit</a>
         </nav>
 
         <main class="shell__main">

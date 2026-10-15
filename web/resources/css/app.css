@@ -1,8 +1,9 @@
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+/* CSS murni berbasis token — tidak bergantung pipeline Tailwind, jadi ter-render di
+   Tailwind v3/v4 maupun tanpa Tailwind. Komponen di Blade memakai kelas di bawah
+   (.card, .badge, .btn, ...), bukan utility Tailwind. Untuk menambah utility,
+   layer-kan Tailwind terpisah; jangan ubah token di sini jadi hardcoded.
 
-/* ============================================================================
+   ============================================================================
    Design tokens — sumber kebenaran di docs/DESIGN_GUIDELINES.md §2.
    Diubah lewat PR yang memperbarui dokumen itu lebih dulu.
    ========================================================================== */
@@ -170,6 +171,33 @@ table.data { width: 100%; border-collapse: collapse; }
 table.data th { background: var(--surface-2); text-align: left; padding: 12px 16px; font-size: 14px; }
 table.data td { padding: 12px 16px; border-top: 1px solid var(--border); font-size: 14px; }
 table.data tbody tr:nth-child(even) { background: var(--surface-2); }
+
+/* Severity chart (§3.6) — bar horizontal, satu sumbu, label langsung */
+.sev-chart { display: grid; gap: 8px; margin: 0; }
+.sev-chart__row { display: grid; grid-template-columns: 120px 1fr 40px; align-items: center; gap: 12px; }
+.sev-chart__label { font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.sev-chart__track { background: var(--surface-2); border-radius: 4px; height: 18px; overflow: hidden; }
+.sev-chart__bar { display: block; height: 100%; border-radius: 4px; }
+.sev-chart__val { font-size: 13px; text-align: right; font-family: var(--font-mono); }
+.sev-bar--critical { background: var(--sev-critical); }
+.sev-bar--high { background: var(--sev-high); }
+.sev-bar--medium { background: var(--sev-medium); }
+.sev-bar--low { background: var(--sev-low); }
+.sev-bar--info { background: var(--sev-info); }
+
+/* Stat tile */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 16px; }
+.tile__num { font-size: 30px; font-weight: 600; line-height: 1; }
+.tile__label { font-size: 12px; color: var(--ink-muted); margin-top: 4px; }
+
+/* Evidence block (§3.3) */
+.evidence { background: var(--surface-2); border-radius: var(--radius); padding: 12px; font-family: var(--font-mono); font-size: 12px; white-space: pre-wrap; word-break: break-word; overflow-x: auto; }
+.finding { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; }
+.finding__loc { color: var(--ink-muted); font-family: var(--font-mono); font-size: 12px; margin-left: 8px; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+.sev-icon { font-size: 11px; }
 
 /* Tombol */
 .btn { height: 40px; padding: 0 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--ink); cursor: pointer; }

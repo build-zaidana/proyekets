@@ -23,8 +23,10 @@ class FindingsIndex extends Component
     {
         $findings = Finding::query()
             ->when($this->severity !== '', fn ($q) => $q->where('severity', $this->severity))
+            // Urut bobot severity, portabel MySQL & SQLite (hindari FIELD()).
             ->orderByRaw(
-                "FIELD(severity, 'Critical','High','Medium','Low','Info')"
+                "CASE severity WHEN 'Critical' THEN 4 WHEN 'High' THEN 3 ".
+                "WHEN 'Medium' THEN 2 WHEN 'Low' THEN 1 ELSE 0 END DESC"
             )
             ->paginate(20);
 

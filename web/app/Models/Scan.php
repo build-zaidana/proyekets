@@ -31,6 +31,11 @@ class Scan extends Model
         return $this->hasMany(Finding::class);
     }
 
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class)->orderBy('id');
+    }
+
     public function isRunning(): bool
     {
         return in_array($this->status, ['queued', 'running'], true);
