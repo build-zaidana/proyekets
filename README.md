@@ -43,7 +43,7 @@ DESIGN_GUIDELINES §6.
 | --- | --- |
 | Guardrail (allowlist, rate limit, filter payload) | ✅ fungsional + unit test |
 | Audit log, HTTP client, recon/form parser | ✅ fungsional |
-| Loop ReAct + validator (SQLi error/boolean, reflected XSS) | ✅ deterministik, jalan tanpa LLM (26 unit test) |
+| Loop ReAct + validator (SQLi error/boolean, reflected XSS) | ✅ deterministik, jalan tanpa LLM (28 unit test) |
 | Integrasi LLM (narasi + remediasi) | ✅ opsional via env; pemilihan aksi penuh = TODO (`agent/core.py`) |
 | Worker polling + akses DB | ✅ fungsional (SQLite default / MySQL) |
 | Dashboard Laravel | ✅ app Laravel 13 + Livewire 4 lengkap & bootable: dashboard+chart, scans, findings, targets, audit, laporan; 4 feature test lolos. Auth opsional (TODO) |
@@ -66,7 +66,7 @@ cp config/payloads.example.yml config/payloads.yml
 python -m venv .venv && source .venv/bin/activate
 pip install -r agent/requirements.txt
 cp .env.example .env         # isi AGENT_DB_DSN agar sama dengan DB Laravel
-pytest                       # 26 test: guardrail, http client, validator, loop
+pytest                       # 28 test: guardrail, http client, validator, loop, kontrak DB
 python -m agent.worker       # polling DB untuk job scan (LLM opsional via env)
 ```
 
@@ -94,7 +94,7 @@ agent/      Python: config guardrails audit db reporter tools/
             core.py (ReAct) validator.py payloads.py llm.py worker.py
 web/        Laravel: app/Models app/Livewire database/migrations resources/{css,views}
 config/     targets.allowlist · payloads.yml (sumber kebenaran guardrail & payload)
-tests/      26 unit test: guardrail, http client, validator, loop core
+tests/      28 unit test: guardrail, http client, validator, loop, kontrak DB
 docs/       PRD.md · DESIGN_GUIDELINES.md
 docker-compose.yml
 ```
