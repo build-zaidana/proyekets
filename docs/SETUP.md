@@ -250,6 +250,8 @@ Hentikan: `Ctrl+C` di tiap terminal; `docker compose down` untuk target.
 | `Vite manifest not found` | Belum `npm run build` (atau jalankan `npm run dev`). |
 | `npm run build` gagal ambil font | Sudah ditangani: `vite.config.js` tidak memakai font build-time; pastikan pakai versi di repo. |
 | `php artisan key:generate` minta APP_KEY | Pastikan `.env` ada (`cp .env.example .env`). |
+| `Please provide a valid cache path` saat `composer install` | Folder `web/storage/framework/views` tidak ada (Git tidak menyimpan folder kosong). Sudah diperbaiki di repo: `git pull`. Darurat: `mkdir web\storage\framework\views` (Windows) atau `mkdir -p web/storage/framework/views`, lalu `composer install` / `php artisan package:discover` lagi. |
+| `docker ... dockerDesktopLinuxEngine ... cannot find the file` (Windows) | Docker Desktop belum jalan. Buka Docker Desktop, tunggu "Engine running", cek `docker ps`, ulangi `docker compose up -d`. Tanpa Docker: jalankan Juice Shop langsung (`git clone juice-shop`, `npm install`, `npm start`). |
 | Port bentrok (8000/8080/3000) | Ganti port: `php artisan serve --port=8001`, atau edit `docker-compose.yml`. |
 | Worker: `No module named sqlalchemy` | `pip install -r agent/requirements.txt` di venv yang aktif. |
 
