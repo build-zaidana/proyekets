@@ -73,12 +73,15 @@ class RateLimiter:
 
     def acquire(self) -> None:
         with self._lock:
-            now = time.monotonic()
-            wait = self._next_at - now
-            if wait > 0:
-                time.sleep(wait)
-                now = time.monotonic()
-            self._next_at = now + self.min_interval
+            # Tunggu sampai jam monoton benar-benar melewati tenggat. time.sleep()
+            # bisa bangun lebih awal (mis. resolusi timer Windows ~15 ms), jadi satu
+            # kali sleep tidak menjamin jeda minimum.
+            while True:
+                remaining = self._next_at - time.monotonic()
+                if remaining <= 0:
+                    break
+                time.sleep(remaining)
+            self._next_at = time.monotonic() + self.min_interval
 
 
 # Pola yang menandakan operasi berpotensi merusak DATA atau SISTEM target.
