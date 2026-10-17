@@ -35,6 +35,26 @@ Ekstensi PHP yang wajib aktif: `pdo_sqlite` (untuk SQLite) atau `pdo_mysql` (MyS
 
 ---
 
+### Pengguna Windows PowerShell: padanan perintah
+
+Perintah di tutorial ini bergaya bash. Di PowerShell pakai padanan berikut:
+
+| Di tutorial | Di PowerShell |
+| --- | --- |
+| `cp a b` | `Copy-Item a b` (atau `copy a b`) |
+| `touch database/database.sqlite` | `New-Item -ItemType File database\database.sqlite` |
+| `source .venv/bin/activate` | `.venv\Scripts\Activate.ps1` |
+| `--class=Database\\Seeders\\TargetSeeder` | `--class=Database\Seeders\TargetSeeder` (satu backslash) |
+| `export VAR=x` | `$env:VAR = "x"` |
+
+`type nul > file` adalah sintaks CMD dan gagal di PowerShell. Kalau
+`Activate.ps1` ditolak, jalankan sekali: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+Untuk SQLite, `php artisan migrate` juga menawarkan membuat file database yang belum
+ada; jawab **Yes**.
+
+---
+
 ## 1. Clone repo
 
 ```bash
